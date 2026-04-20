@@ -1,5 +1,7 @@
 # ADDmeCART 🛒
 
+A lightweight e-commerce catalog and inventory management system built with Symfony 8, Twig, and SQLite.
+
 ## 🛠️ Prerequisites
 Before you begin, ensure you have the following installed on your machine:
 * **PHP** (v8.2 or higher)
@@ -14,12 +16,14 @@ If this is your first time working on the project, follow these steps to rebuild
 **1. Clone the repository**
 ```bash
 git clone [https://github.com/ajee0222/ADDmeCART.git](https://github.com/ajee0222/ADDmeCART.git)
+cd ADDmeCART
 
-cd addmecart
-
+**Install dependencies**
 composer install
 
+**Build the local DataBase**
 php bin/console doctrine:database:create
 php bin/console doctrine:schema:create
 
-php -S 127.0.0.1:8000 -t public  
+**Start The Local Server**
+php -S 0.0.0.0:8000 -t public
