@@ -16,21 +16,16 @@ class CartController extends AbstractController
     #[Route('/cart/add/{id}', name: 'app_cart_add')]
     public function add(int $id, ProductRepository $productRepo, EntityManagerInterface $entityManager): Response
     {
-        // 1. MOCK LOGIN: Find the first user, or create a test user if the database is empty
-        $userRepo = $entityManager->getRepository(User::class);
-        $user = $userRepo->findOneBy([]);
-        
+        // 1. REAL LOGIN: Get the currently logged-in user
+        $user = $this->getUser();
+
+        // 2. Security Check: If they aren't logged in, kick them to the login screen!
         if (!$user) {
-            $user = new User();
-            $user->setEmail('test@addmecart.com'); // Required by your entity
-            $user->setPassword('password123');     // Required by your entity
-            $user->setFirstName('Test');
-            $user->setLastName('Shopper');
-            $user->setSecurityPin('1234');         // Fixed method name!
-            $entityManager->persist($user);
+            $this->addFlash('error', 'You must be logged in to add items to your cart.');
+            return $this->redirectToRoute('app_login');
         }
 
-        // 2. Fetch the Cart. If the user doesn't have one, build it.
+        // 3. Fetch the Cart. If the user doesn't have one, build it.
         $cart = $user->getCart();
         if (!$cart) {
             $cart = new Cart();
@@ -38,13 +33,13 @@ class CartController extends AbstractController
             $entityManager->persist($cart);
         }
 
-        // 3. Find the Product they clicked on
+        // 4. Find the Product they clicked on
         $product = $productRepo->find($id);
         if (!$product) {
             throw $this->createNotFoundException('Product not found.');
         }
 
-        // 4. ENFORCE THE LIMIT: Calculate total items currently in the cart
+        // 5. ENFORCE THE LIMIT: Calculate total items currently in the cart
         $currentTotalItems = 0;
         foreach ($cart->getCartItems() as $item) {
             $currentTotalItems += $item->getQuantity();
@@ -55,7 +50,7 @@ class CartController extends AbstractController
             return $this->redirectToRoute('app_product_catalog');
         }
 
-        // 5. Check if the product is already in the cart
+        // 6. Check if the product is already in the cart
         $existingCartItem = null;
         foreach ($cart->getCartItems() as $item) {
             if ($item->getProduct() === $product) {
@@ -76,10 +71,65 @@ class CartController extends AbstractController
             $entityManager->persist($cartItem);
         }
 
-        // 6. Save everything to SQLite and show a success message
+        // 7. Save everything to SQLite and show a success message
         $entityManager->flush();
         $this->addFlash('success', $product->getName() . ' was added to your cart!');
 
         return $this->redirectToRoute('app_product_catalog');
+    }
+
+    #[Route('/cart', name: 'app_cart_index')]
+    public function index(EntityManagerInterface $entityManager): Response
+    {
+        // 1. REAL LOGIN: Get the currently logged-in user
+        $user = $this->getUser();
+        
+        // 2. If no one is logged in, or they have no cart, show it as empty
+        if (!$user || !method_exists($user, 'getCart') || !$user->getCart()) {
+            return $this->render('cart/index.html.twig', [
+                'cartItems' => [],
+                'total' => 0
+            ]);
+        }
+
+        // 3. Get the items and calculate the Grand Total
+        $cartItems = $user->getCart()->getCartItems();
+        $total = 0;
+        
+        foreach ($cartItems as $item) {
+            $total += $item->getProduct()->getPrice() * $item->getQuantity();
+        }
+
+        // 4. Send the data to the visual template
+        return $this->render('cart/index.html.twig', [
+            'cartItems' => $cartItems,
+            'total' => $total
+        ]);
+    }
+    
+    #[Route('/cart/remove/{id}', name: 'app_cart_remove')]
+    public function remove(int $id, EntityManagerInterface $entityManager): Response
+    {
+        // 1. Get the currently logged-in user
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->redirectToRoute('app_login');
+        }
+
+        // 2. Find the exact cart item in the database
+        $cartItem = $entityManager->getRepository(CartItem::class)->find($id);
+
+        // 3. SECURITY: Make sure the item exists AND belongs to the person trying to delete it!
+        if ($cartItem && $cartItem->getCart()->getUser() === $user) {
+            $entityManager->remove($cartItem);
+            $entityManager->flush();
+            
+            $this->addFlash('success', 'Item removed from your cart.');
+        } else {
+            $this->addFlash('error', 'Could not remove that item.');
+        }
+
+        // 4. Send them right back to the cart page to see the updated total
+        return $this->redirectToRoute('app_cart_index');
     }
 }

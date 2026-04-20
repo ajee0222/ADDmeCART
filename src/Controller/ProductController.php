@@ -14,9 +14,22 @@ use Symfony\Component\Routing\Attribute\Route;
 class ProductController extends AbstractController
 {
     #[Route('/products', name: 'app_product_catalog')]
-    public function index(ProductRepository $productRepository): Response
+    public function index(ProductRepository $productRepository, Request $request): Response
     {
-        $products = $productRepository->findAll();
+        // 1. Capture the search term from the URL (e.g., ?q=shirt)
+        $searchTerm = $request->query->get('q');
+
+        // 2. If the user searched for something, filter the database
+        if ($searchTerm) {
+            $products = $productRepository->createQueryBuilder('p')
+                ->where('p.name LIKE :term OR p.category LIKE :term')
+                ->setParameter('term', '%' . $searchTerm . '%')
+                ->getQuery()
+                ->getResult();
+        } else {
+            // 3. Otherwise, just show all products normally
+            $products = $productRepository->findAll();
+        }
 
         return $this->render('product/index.html.twig', [
             'products' => $products,
