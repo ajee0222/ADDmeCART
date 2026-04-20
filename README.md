@@ -18,12 +18,9 @@ If this is your first time working on the project, follow these steps to rebuild
 git clone [https://github.com/ajee0222/ADDmeCART.git](https://github.com/ajee0222/ADDmeCART.git)
 cd ADDmeCART
 
-**Install dependencies**
 composer install
 
-**Build the local DataBase**
 php bin/console doctrine:database:create
 php bin/console doctrine:schema:create
 
-**Start The Local Server**
 php -S 0.0.0.0:8000 -t public
