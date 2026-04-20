@@ -12,6 +12,19 @@
     .category { font-size: 0.8em; color: #888; text-transform: uppercase; }
 </style>
 
+{# This block displays the success or error messages from the controller #}
+{% for message in app.flashes('success') %}
+    <div style="background-color: #d4edda; color: #155724; padding: 10px; margin-bottom: 15px; border-radius: 4px;">
+        {{ message }}
+    </div>
+{% endfor %}
+
+{% for message in app.flashes('error') %}
+    <div style="background-color: #f8d7da; color: #721c24; padding: 10px; margin-bottom: 15px; border-radius: 4px;">
+        {{ message }}
+    </div>
+{% endfor %}
+
 <h1>Product Catalog</h1>
 
 <div class="product-grid">
@@ -22,7 +35,9 @@
             <p>{{ product.description }}</p>
             <p class="price">₱{{ product.price|number_format(2) }}</p>
             <p>Stock: {{ product.stockQuantity }} items</p>
-            <button>Add to Cart</button>
+            <a href="{{ path('app_cart_add', {'id': product.id}) }}">
+    <button>Add to Cart</button>
+</a>
         </div>
     {% else %}
         <p>No products found in the database.</p>
